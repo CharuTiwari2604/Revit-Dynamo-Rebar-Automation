@@ -1,0 +1,160 @@
+{
+  "Uuid": "041b7dc7-b3e1-4a4e-876f-99fcc0293843",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "py1",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "# Step 1 - Write boilerplate code\r\nimport clr\r\n\r\nclr.AddReference('RevitAPI')\r\nclr.AddReference('RevitServices')\r\n\r\nfrom Autodesk.Revit.DB import *\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\n# Step 2 - Get all columns\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\ncolumns = FilteredElementCollector(doc) \\\r\n            .OfCategory(BuiltInCategory.OST_StructuralColumns) \\\r\n            .WhereElementIsNotElementType() \\\r\n            .ToElements()\r\n\r\naudit_results = []\r\ntotal_concrete_volume_m3 = 0.0\r\nflagged_count = 0\r\n\r\n# Step 3 - Write QA/QC rules\r\nt = Transaction(doc, \"QAQC Column Audit\")\r\nt.Start()\r\n\r\nfor col in columns:\r\n    level_param = col.LookupParameter(\"Base Level\")\r\n    level_name = level_param.AsValueString() if level_param else \"Unknown level\"\r\n    \r\n    length_param = col.LookupParameter(\"System Length\")\r\n    length_ft = length_param.AsDouble() if length_param else 0.0\r\n    length_m = length_ft * 0.3048\r\n    \r\n    vol_param = col.LookupParameter(\"Volume\")\r\n    vol_ft = vol_param.AsDouble() if vol_param else 0.0\r\n    vol_m3 = vol_ft * 0.0283168\r\n    total_concrete_volume_m3 += vol_m3\r\n    \r\n    comments_param = col.LookupParameter(\"Comments\")\r\n    \r\n    if length_m > 6.0:\r\n        status = f\"Warning: Exceed 6m transport limit ({length_m:.2f} m)\"\r\n        flagged_count += 1\r\n    else:\r\n        status = \"Pass: Approved Length\"\r\n        \r\n    if comments_param and not comments_param.IsReadOnly:\r\n        comments_param.Set(status)\r\n        \r\n    audit_results.append([col.Id.ToString(), level_name, round(length_m, 2), status])\r\n\r\nt.Commit()\r\n\r\n# Step 4 - Output generation\r\nsummary_text = (\r\n    f\"Total Columns = {len(columns)}\\n\"\r\n    f\"Flagged Columns (>6m) = {flagged_count}\\n\"\r\n    f\"Total Concrete Volume = {total_concrete_volume_m3:.2f} m3\"\r\n)\r\n\r\nOUT = summary_text",
+      "Engine": "PythonNet3",
+      "VariableInputPorts": true,
+      "Id": "35a70c9512cf462aaf616e9458d88eb3",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "39dfb5c97f8044aa969b6ab14ed6a703",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "b773940e17aa47dbaa709c92a60b1a8d",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded Python script."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 420.0,
+      "WatchHeight": 200.0,
+      "Id": "3e6c6ac3f7a7424b8efabf7d7b985ce5",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "df99b8d4b1de44ad93ac9ef83adba294",
+          "Name": "",
+          "Description": "Node to show output from",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "1ed3b1354ff24b178fa18e33ee90b019",
+          "Name": "",
+          "Description": "Node output",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualizes a node's output"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "b773940e17aa47dbaa709c92a60b1a8d",
+      "End": "df99b8d4b1de44ad93ac9ef83adba294",
+      "Id": "707104b0bafa4fbca7e17ec07b5ee763",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "EnableLegacyPolyCurveBehavior": false,
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Properties",
+      "Version": "4.0",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "10.3",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "None",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "4.0.2.3852",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "_Background Preview",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "35a70c9512cf462aaf616e9458d88eb3",
+        "Name": "Python Script",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 962.6808194762477,
+        "Y": 118.22595959403327
+      },
+      {
+        "Id": "3e6c6ac3f7a7424b8efabf7d7b985ce5",
+        "Name": "Watch",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 1037.7866263813678,
+        "Y": 279.481686849552
+      }
+    ],
+    "Annotations": [],
+    "X": -176.25939134494672,
+    "Y": 38.8429039319696,
+    "Zoom": 0.889234756130217
+  }
+}

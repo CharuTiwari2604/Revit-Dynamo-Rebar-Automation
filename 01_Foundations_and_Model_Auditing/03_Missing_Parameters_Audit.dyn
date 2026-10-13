@@ -1,0 +1,160 @@
+{
+  "Uuid": "86117fb8-1ab1-4e87-992f-6d2d12c3051b",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "exercise3",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "import clr\r\n\r\nclr.AddReference('RevitAPI')\r\nclr.AddReference('RevitServices')\r\n\r\nimport Autodesk\r\nfrom Autodesk.Revit.DB import *\r\nfrom RevitServices.Persistence import DocumentManager\r\n\r\ndoc=DocumentManager.Instance.CurrentDBDocument\r\n\r\nbeam=FilteredElementCollector(doc) \\\r\n.OfCategory(BuiltInCategory.OST_StructuralFraming) \\\r\n.WhereElementIsNotElementType() \\\r\n.ToElements()\r\n\r\nunmarked_count=0\r\naudit=[]\r\n\r\nt=Transaction(doc, 'Beam QA/QC Audit')\r\nt.Start()\r\n\r\nfor b in beam:\r\n    mark_param=b.LookupParameter('Mark')\r\n    mark_val=mark_param.AsString() if mark_param else None\r\n    comment_param=b.LookupParameter('Comments')\r\n    \r\n    if not mark_val or mark_val.strip()==\"\":\r\n        unmarked_count+=1\r\n        status='QA/QC Warning: Missing Mark ID'\r\n        \r\n        if comment_param and not comment_param.IsReadOnly:\r\n            comment_param.Set(status)\r\n            \r\n        audit.append(f'BeamId: {b.Id.ToString()} -> Flagged(No mark)')\r\n       \r\nt.Commit\r\n\r\nsummary= (\r\n    f\"=== Beam QA/QC Identification Audit ===\\n\"\r\n    f\"• Total Beams Inspected: {len(beam)}\\n\"\r\n    f\"• Beams Missing Mark IDs: {unmarked_count}\\n\\n\"\r\n    f\"First 5 Flagged Items:\\n\" + \"\\n\".join(audit[:5])\r\n)\r\n\r\nOUT =summary\r\n\r\n\r\n\r\n\r\n\r\n",
+      "Engine": "PythonNet3",
+      "VariableInputPorts": true,
+      "Id": "ec24ef99c84247039850a50e6fd59006",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "593ec933bae5460faeb499933715e81e",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "2de8bb71799d424fb2679413cdd9e8d4",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded Python script."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 420.0,
+      "WatchHeight": 200.0,
+      "Id": "eb13df1931a7409f8d73cd8064f823e0",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "f034559dda70484b949765c058e189ee",
+          "Name": "",
+          "Description": "Node to show output from",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "87a5eca5d2664798830855bccd1deaf6",
+          "Name": "",
+          "Description": "Node output",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualizes a node's output"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "2de8bb71799d424fb2679413cdd9e8d4",
+      "End": "f034559dda70484b949765c058e189ee",
+      "Id": "5cc0f761ef95442590eb6c3aaffb7e0c",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "EnableLegacyPolyCurveBehavior": false,
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Properties",
+      "Version": "4.0",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "10.3",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "None",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "4.0.2.3852",
+      "RunType": "Automatic",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "_Background Preview",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "ec24ef99c84247039850a50e6fd59006",
+        "Name": "Python Script",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 739.1999999999999,
+        "Y": 153.59999999999994
+      },
+      {
+        "Id": "eb13df1931a7409f8d73cd8064f823e0",
+        "Name": "Watch",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 268.80000000000024,
+        "Y": 250.39999999999998
+      }
+    ],
+    "Annotations": [],
+    "X": 0.0,
+    "Y": 0.0,
+    "Zoom": 1.0
+  }
+}

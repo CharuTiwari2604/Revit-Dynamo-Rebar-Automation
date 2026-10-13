@@ -1,0 +1,160 @@
+{
+  "Uuid": "3298d820-0aa0-42af-aa3f-40f94d7aab48",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "exxercise1",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "import clr\r\nclr.AddReference('RevitAPI')\r\nclr.AddReference('RevitServices')\r\n\r\nimport Autodesk\r\nfrom Autodesk.Revit.DB import  *\r\nfrom RevitServices.Persistence import DocumentManager\r\n\r\ndoc=DocumentManager.Instance.CurrentDBDocument\r\n\r\nlevel='01 - Entry Level'\r\n\r\nall_levels = FilteredElementCollector(doc) \\\r\n    .OfClass(Level) \\\r\n    .WhereElementIsNotElementType() \\\r\n    .ToElements()\r\n\r\nlevel_1=None\r\n\r\nfor lvl in all_levels:\r\n    if lvl.Name==level:\r\n        level_1=lvl.Id\r\n        break\r\n        \r\nif level_1:\r\n    level_filter=ElementLevelFilter(level_1)\r\n    level_cols=FilteredElementCollector(doc) \\\r\n    .OfCategory(BuiltInCategory.OST_StructuralColumns) \\\r\n    .WherePasses(level_filter) \\\r\n    .WhereElementIsNotElementType() \\\r\n    .ToElements()\r\n    \r\n    col_details=[]\r\n    total_vol=0.0\r\n    \r\n    for col in level_cols:\r\n        colId=col.Id.ToString()\r\n        vol_param=col.LookupParameter('Volume')\r\n        vol_ft3=vol_param.AsDouble() if vol_param else 0.0\r\n        vol_m3=vol_ft3 * 0.0283168\r\n        total_vol+=vol_m3\r\n        \r\n        col_details.append(f\"ID: {colId} | Vol: {vol_m3:.2f} m3\")\r\n    \r\n    summary_output = (\r\n        f\" Level Filter Audit: '{level}' \\n\"\r\n        f\"• Columns Found on {level}: {len(level_cols)}\\n\"\r\n        f\"• Total Concrete Volume on Floor: {total_vol:.2f} m3\\n\\n\"\r\n        f\"Sample Elements:\\n\" + \"\\n\".join(col_details[:5])  # Show first 5\r\n    )\r\n        \r\nelse:\r\n     summary_output = f\"ERROR: Level '{level}' was not found in the model.\"\r\n     \r\nOUT=summary_output \r\n   ",
+      "Engine": "PythonNet3",
+      "VariableInputPorts": true,
+      "Id": "09b99c45ec1e48ffa38c357edf1ea61a",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "e0a8831306394ee5b0efe9849ea767a2",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "906827abc7074a30805bc20c0a3564fa",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded Python script."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 420.0,
+      "WatchHeight": 200.0,
+      "Id": "de96dda6d6314517b754d7f65aa21ffe",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "75771908d5f444efa33598386ef547e5",
+          "Name": "",
+          "Description": "Node to show output from",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "6cf9b1aa18fc4aa0a81057eb94e08776",
+          "Name": "",
+          "Description": "Node output",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualizes a node's output"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "906827abc7074a30805bc20c0a3564fa",
+      "End": "75771908d5f444efa33598386ef547e5",
+      "Id": "2ca8f21d72bb47a88fee8845cd6199c5",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "EnableLegacyPolyCurveBehavior": null,
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Properties",
+      "Version": "4.0",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "10.3",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "None",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "4.0.2.3852",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "_Background Preview",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "09b99c45ec1e48ffa38c357edf1ea61a",
+        "Name": "Python Script",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 359.1999999999999,
+        "Y": 197.6
+      },
+      {
+        "Id": "de96dda6d6314517b754d7f65aa21ffe",
+        "Name": "Watch",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 756.0000000000001,
+        "Y": 159.19999999999996
+      }
+    ],
+    "Annotations": [],
+    "X": 0.0,
+    "Y": 0.0,
+    "Zoom": 1.0
+  }
+}

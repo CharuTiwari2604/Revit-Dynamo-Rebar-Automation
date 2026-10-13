@@ -1,0 +1,160 @@
+{
+  "Uuid": "18b0f610-b608-453d-87ef-d1e811a76dba",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "exercise6",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "import clr\r\nimport csv\r\n\r\nclr.AddReference('RevitAPI')\r\nclr.AddReference('RevitServices')\r\n\r\nfrom Autodesk.Revit.DB import *\r\nfrom RevitServices.Persistence import DocumentManager\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\nupdated_count = 0\r\nfailed_count = 0\r\nsync_log = []\r\n\r\npath = r'C:\\Users\\yogen\\Desktop\\Dynamo  Exercise\\exercise5.csv'\r\n\r\nt = Transaction(doc, 'Import Changes from csv file')\r\nt.Start()\r\n\r\ntry:\r\n    with open(path, mode='r') as f:\r\n        reader = csv.reader(f)\r\n        header = next(reader, None) \r\n        \r\n        for row in reader:\r\n            if not row or len(row) < 5:\r\n                continue\r\n                \r\n            rowId = row[0].strip()\r\n            status = row[4].strip() \r\n            \r\n            try:\r\n                elemId = ElementId(int(rowId))\r\n                elem = doc.GetElement(elemId)\r\n                \r\n                if elem:\r\n                    comments_param = elem.LookupParameter(\"Comments\")\r\n                    \r\n                    if comments_param and not comments_param.IsReadOnly:\r\n                        comments_param.Set(status)\r\n                        updated_count += 1\r\n                        sync_log.append(f\"Synced ID {rowId} -> '{status}'\") \r\n                    else:\r\n                        failed_count += 1\r\n                else:\r\n                    failed_count += 1\r\n                    \r\n            except Exception:\r\n                failed_count += 1\r\n\r\n    t.Commit()\r\n    status_msg = f\"SUCCESS: Synced {updated_count} elements from CSV to Revit.\"\r\n\r\nexcept Exception as file_err:\r\n    t.RollBack()  \r\n    status_msg = f\"ERROR reading file: {str(file_err)}\"\r\n\r\nsummary_output = (\r\n    f\"=== CSV to Revit Sync Summary ===\\n\"\r\n    f\"• Status: {status_msg}\\n\"\r\n    f\"• Successfully Updated: {updated_count} elements\\n\"\r\n    f\"• Failed/Skipped: {failed_count} elements\\n\\n\"\r\n    f\"Sample Updates:\\n\" + \"\\n\".join(sync_log[:5])\r\n)\r\n\r\nOUT = summary_output",
+      "Engine": "PythonNet3",
+      "VariableInputPorts": true,
+      "Id": "f4545147cb10452bbcbe40e634444575",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "529065c2bf2e46f2ad530076f8208e21",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "3da059f6a01a486194c111d947718232",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded Python script."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 420.0,
+      "WatchHeight": 200.0,
+      "Id": "33ce62d288d4419fa1c33ea0cab3d299",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "a5b9477a32b04e6285114d7434578ec0",
+          "Name": "",
+          "Description": "Node to show output from",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "7b201617eac2490ab1ff64f2016109b5",
+          "Name": "",
+          "Description": "Node output",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualizes a node's output"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "3da059f6a01a486194c111d947718232",
+      "End": "a5b9477a32b04e6285114d7434578ec0",
+      "Id": "a890013d3a2e4a24a4d6ea8a26cd5c2b",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "EnableLegacyPolyCurveBehavior": false,
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Properties",
+      "Version": "4.0",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "10.3",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "None",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "4.0.2.3852",
+      "RunType": "Automatic",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "_Background Preview",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "f4545147cb10452bbcbe40e634444575",
+        "Name": "Python Script",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 562.4,
+        "Y": 282.4
+      },
+      {
+        "Id": "33ce62d288d4419fa1c33ea0cab3d299",
+        "Name": "Watch",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 759.2000000000002,
+        "Y": 165.6
+      }
+    ],
+    "Annotations": [],
+    "X": 0.0,
+    "Y": 0.0,
+    "Zoom": 1.0
+  }
+}
