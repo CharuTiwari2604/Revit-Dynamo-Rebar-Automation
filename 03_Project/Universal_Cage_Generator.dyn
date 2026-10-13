@@ -1,0 +1,198 @@
+{
+  "Uuid": "44542617-9519-437a-8495-01e2a09a9e73",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "7rebarfinalexercise",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "import clr\r\nfrom System.Collections.Generic import List\r\n\r\nclr.AddReference('RevitAPI')\r\nimport Autodesk.Revit.DB as DB\r\nimport Autodesk.Revit.DB.Structure as DBStruct\r\n\r\nclr.AddReference('RevitServices')\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\nhost = UnwrapElement(IN[0])\r\n\r\nif not host:\r\n    OUT = 'Error: Please select a concrete column or beam'\r\nelse:\r\n    host_data = DBStruct.RebarHostData.GetRebarHostData(host)\r\n\r\n    if host_data is None or not host_data.IsValidHost():\r\n        OUT = 'Selected element is not valid rebar host'\r\n    else:\r\n        rebar_type = DB.FilteredElementCollector(doc) \\\r\n            .OfClass(DBStruct.RebarBarType) \\\r\n            .WhereElementIsElementType() \\\r\n            .FirstElement()\r\n\r\n        bbox = host.get_BoundingBox(None)\r\n        ptmin = bbox.Min\r\n        ptmax = bbox.Max\r\n\r\n        dx = abs(ptmax.X - ptmin.X)\r\n        dy = abs(ptmax.Y - ptmin.Y)\r\n        dz = abs(ptmax.Z - ptmin.Z)\r\n\r\n        iscol = dz > max(dx, dy)\r\n\r\n        cover_ft = 40.0 / 304.8\r\n        strup_dia = 10.0 / 304.8\r\n        cover_main = cover_ft + strup_dia\r\n\r\n        # Outer Stirrup Bounds\r\n        xminst = ptmin.X + cover_ft\r\n        xmaxst = ptmax.X - cover_ft\r\n        yminst = ptmin.Y + cover_ft\r\n        ymaxst = ptmax.Y - cover_ft  \r\n        zminst = ptmin.Z + cover_ft\r\n        zmaxst = ptmax.Z - cover_ft\r\n\r\n        # Inner Main Bar Bounds\r\n        xminm = ptmin.X + cover_main\r\n        xmaxm = ptmax.X - cover_main\r\n        yminm = ptmin.Y + cover_main\r\n        ymaxm = ptmax.Y - cover_main\r\n        zminm = ptmin.Z + cover_main\r\n        zmaxm = ptmax.Z - cover_main\r\n\r\n        dense = 100.0 / 304.8\r\n        sparse = 200.0 / 304.8\r\n\r\n        TransactionManager.Instance.EnsureInTransaction(doc)\r\n        created_elements = []\r\n\r\n        # =========================================================\r\n        # COLUMN (Vertical)\r\n        # =========================================================\r\n        if iscol:\r\n            cornerpts = [\r\n                (xminm, yminm), (xmaxm, yminm), (xmaxm, ymaxm), (xminm, ymaxm)\r\n            ]\r\n            norm_main = DB.XYZ(1, 0, 0)\r\n\r\n            for cx, cy in cornerpts:\r\n                p1 = DB.XYZ(cx, cy, zminm)\r\n                p2 = DB.XYZ(cx, cy, zmaxm)\r\n                line = DB.Line.CreateBound(p1, p2)\r\n                curves = List[DB.Curve]()\r\n                curves.Add(line)\r\n\r\n                bar_term = DBStruct.BarTerminationsData(doc)\r\n                bar = DBStruct.Rebar.CreateFromCurves(\r\n                    doc, DBStruct.RebarStyle.Standard, rebar_type,\r\n                    host, norm_main, curves, bar_term, True, True\r\n                )\r\n                if bar:\r\n                    created_elements.append(bar.Id.ToString())  \r\n\r\n            total_len = zmaxst - zminst\r\n            zone_len = total_len * 0.20\r\n            curvez = zminst\r\n            normst = DB.XYZ(0, 0, 1)\r\n\r\n            while curvez <= zmaxst:\r\n                cp0 = DB.XYZ(xminst, yminst, curvez)\r\n                cp1 = DB.XYZ(xmaxst, yminst, curvez)\r\n                cp2 = DB.XYZ(xmaxst, ymaxst, curvez)\r\n                cp3 = DB.XYZ(xminst, ymaxst, curvez)\r\n\r\n                l1 = DB.Line.CreateBound(cp0, cp1)\r\n                l2 = DB.Line.CreateBound(cp1, cp2)\r\n                l3 = DB.Line.CreateBound(cp2, cp3)\r\n                l4 = DB.Line.CreateBound(cp3, cp0)\r\n\r\n                stcurves = List[DB.Curve]()\r\n                stcurves.Add(l1); stcurves.Add(l2); stcurves.Add(l3); stcurves.Add(l4)\r\n\r\n                barterm = DBStruct.BarTerminationsData(doc)\r\n                strup = DBStruct.Rebar.CreateFromCurves(\r\n                    doc, DBStruct.RebarStyle.StirrupTie, rebar_type,\r\n                    host, normst, stcurves, barterm, True, True\r\n                )\r\n                if strup:\r\n                    created_elements.append(strup.Id.ToString())  \r\n                \r\n                in_end_zone = (curvez - zminst) <= zone_len or (zmaxst - curvez) <= zone_len\r\n                curvez += dense if in_end_zone else sparse \r\n\r\n        # =========================================================\r\n        # BEAM (Horizontal)\r\n        # =========================================================\r\n        else:\r\n            alongx = dx >= dy\r\n\r\n            # --- BEAM ALIGNED WITH X-AXIS ---\r\n            if alongx:\r\n                cornerpts = [\r\n                    (yminm, zminm), (ymaxm, zminm), (ymaxm, zmaxm), (yminm, zmaxm)\r\n                ]\r\n                norm_main = DB.XYZ(0, 1, 0)\r\n\r\n                for cy, cz in cornerpts:\r\n                    p1 = DB.XYZ(xminm, cy, cz)\r\n                    p2 = DB.XYZ(xmaxm, cy, cz)\r\n                    line = DB.Line.CreateBound(p1, p2)\r\n                    curves = List[DB.Curve]()\r\n                    curves.Add(line)\r\n\r\n                    bar_term = DBStruct.BarTerminationsData(doc)\r\n                    bar = DBStruct.Rebar.CreateFromCurves(\r\n                        doc, DBStruct.RebarStyle.Standard, rebar_type,\r\n                        host, norm_main, curves, bar_term, True, True\r\n                    )\r\n                    if bar:\r\n                        created_elements.append(bar.Id.ToString())\r\n\r\n                totallen = xmaxst - xminst  \r\n                zonelen = totallen * 0.20\r\n                currx = xminst\r\n                normst = DB.XYZ(1, 0, 0)\r\n\r\n                while currx <= xmaxst:\r\n                    cp0 = DB.XYZ(currx, yminst, zminst)\r\n                    cp1 = DB.XYZ(currx, ymaxst, zminst)\r\n                    cp2 = DB.XYZ(currx, ymaxst, zmaxst)\r\n                    cp3 = DB.XYZ(currx, yminst, zmaxst)\r\n\r\n                    l1 = DB.Line.CreateBound(cp0, cp1)\r\n                    l2 = DB.Line.CreateBound(cp1, cp2)\r\n                    l3 = DB.Line.CreateBound(cp2, cp3)\r\n                    l4 = DB.Line.CreateBound(cp3, cp0)\r\n\r\n                    stcurves = List[DB.Curve]()\r\n                    stcurves.Add(l1); stcurves.Add(l2); stcurves.Add(l3); stcurves.Add(l4)\r\n\r\n                    bar_term = DBStruct.BarTerminationsData(doc)\r\n                    strup = DBStruct.Rebar.CreateFromCurves(\r\n                        doc, DBStruct.RebarStyle.StirrupTie, rebar_type,\r\n                        host, normst, stcurves, bar_term, True, True\r\n                    )\r\n                    if strup:\r\n                        created_elements.append(strup.Id.ToString())\r\n\r\n                    in_end_zone = (currx - xminst) <= zonelen or (xmaxst - currx) <= zonelen\r\n                    currx += dense if in_end_zone else sparse\r\n\r\n            # --- BEAM ALIGNED WITH Y-AXIS ---\r\n            else:\r\n                cornerpts = [\r\n                    (xminm, zminm), (xmaxm, zminm), (xmaxm, zmaxm), (xminm, zmaxm)\r\n                ]\r\n                norm_main = DB.XYZ(1, 0, 0)\r\n\r\n                for cx, cz in cornerpts:\r\n                    p1 = DB.XYZ(cx, yminm, cz)\r\n                    p2 = DB.XYZ(cx, ymaxm, cz)\r\n                    line = DB.Line.CreateBound(p1, p2)\r\n                    curves = List[DB.Curve]()\r\n                    curves.Add(line)\r\n\r\n                    bar_term = DBStruct.BarTerminationsData(doc)\r\n                    bar = DBStruct.Rebar.CreateFromCurves(\r\n                        doc, DBStruct.RebarStyle.Standard, rebar_type,\r\n                        host, norm_main, curves, bar_term, True, True\r\n                    )\r\n                    if bar:\r\n                        created_elements.append(bar.Id.ToString())\r\n\r\n                totallen = ymaxst - yminst  \r\n                zonelen = totallen * 0.20\r\n                curry = yminst\r\n                normst = DB.XYZ(0, 1, 0)\r\n\r\n                while curry <= ymaxst:\r\n                    cp0 = DB.XYZ(xminst, curry, zminst)\r\n                    cp1 = DB.XYZ(xmaxst, curry, zminst)\r\n                    cp2 = DB.XYZ(xmaxst, curry, zmaxst)\r\n                    cp3 = DB.XYZ(xminst, curry, zmaxst)\r\n\r\n                    l1 = DB.Line.CreateBound(cp0, cp1)\r\n                    l2 = DB.Line.CreateBound(cp1, cp2)\r\n                    l3 = DB.Line.CreateBound(cp2, cp3)\r\n                    l4 = DB.Line.CreateBound(cp3, cp0)\r\n\r\n                    stcurves = List[DB.Curve]()\r\n                    stcurves.Add(l1); stcurves.Add(l2); stcurves.Add(l3); stcurves.Add(l4)\r\n\r\n                    bar_term = DBStruct.BarTerminationsData(doc)\r\n                    strup = DBStruct.Rebar.CreateFromCurves(\r\n                        doc, DBStruct.RebarStyle.StirrupTie, rebar_type,\r\n                        host, normst, stcurves, bar_term, True, True\r\n                    )\r\n                    if strup:\r\n                        created_elements.append(strup.Id.ToString())\r\n\r\n                    in_end_zone = (curry - yminst) <= zonelen or (ymaxst - curry) <= zonelen\r\n                    curry += dense if in_end_zone else sparse\r\n\r\n        TransactionManager.Instance.TransactionTaskDone()\r\n\r\n        element_type = 'COLUMN' if iscol else 'BEAM'\r\n        OUT = \"Success: Generated 3D rebar cage for {}! Total Elements: {}\".format(\r\n            element_type, len(created_elements)\r\n        )",
+      "Engine": "PythonNet3",
+      "VariableInputPorts": true,
+      "Id": "0a93340e3bd84a099bbed7d18bbe504c",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "11f331dd0c9849f8b1380942ed972fa0",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "584f1306361c4a9f9af21ddef146104f",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded Python script."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 420.0,
+      "WatchHeight": 40.0,
+      "Id": "a2204045333b4716ada6b214970da07f",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "8938f14c4f77486dbe02b96209b40e74",
+          "Name": "",
+          "Description": "Node to show output from",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "8d1e1d69896e4f2ebaa90362cba352f6",
+          "Name": "",
+          "Description": "Node output",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualizes a node's output"
+    },
+    {
+      "ConcreteType": "Dynamo.Nodes.DSModelElementSelection, DSRevitNodesUI",
+      "NodeType": "ExtensionNode",
+      "InstanceId": [
+        "f22753d7-9f09-489c-8d4a-5376f44beb12-001990ce"
+      ],
+      "Id": "885f377a61ea4b74a9dde64596669f7e",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "1fb170fe79ca4d2f8f31f5c8a0b5ee22",
+          "Name": "Element",
+          "Description": "The selected elements.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Select a model element from the document."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "584f1306361c4a9f9af21ddef146104f",
+      "End": "8938f14c4f77486dbe02b96209b40e74",
+      "Id": "927f12f5121e41a4816ef930770c80e0",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "1fb170fe79ca4d2f8f31f5c8a0b5ee22",
+      "End": "11f331dd0c9849f8b1380942ed972fa0",
+      "Id": "785df76ed0184763a521f11e4352e5d9",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "EnableLegacyPolyCurveBehavior": null,
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Properties",
+      "Version": "4.0",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "10.3",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "None",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "4.0.2.3852",
+      "RunType": "Automatic",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "_Background Preview",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "0a93340e3bd84a099bbed7d18bbe504c",
+        "Name": "Python Script",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 747.1999999999999,
+        "Y": 258.4
+      },
+      {
+        "Id": "a2204045333b4716ada6b214970da07f",
+        "Name": "Watch",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 711.2,
+        "Y": 90.39999999999998
+      },
+      {
+        "Id": "885f377a61ea4b74a9dde64596669f7e",
+        "Name": "Select Model Element",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 14.400000000000034,
+        "Y": 176.79999999999993
+      }
+    ],
+    "Annotations": [],
+    "X": 0.0,
+    "Y": 0.0,
+    "Zoom": 1.0
+  }
+}
