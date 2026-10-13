@@ -1,0 +1,198 @@
+{
+  "Uuid": "871ecc4c-4c92-4078-912b-f42de75d21ab",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "6rebarexercise",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "Dynamo.Nodes.DSModelElementSelection, DSRevitNodesUI",
+      "NodeType": "ExtensionNode",
+      "InstanceId": [
+        "f22753d7-9f09-489c-8d4a-5376f44beb12-001990b4"
+      ],
+      "Id": "9b95b0f5d1bb4fc9994a8af1cba3f652",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "f2752315c835472c9e973f22fa397916",
+          "Name": "Element",
+          "Description": "The selected elements.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Select a model element from the document."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "import clr\r\n\r\nclr.AddReference('RevitAPI')\r\nimport Autodesk.Revit.DB as DB\r\nimport Autodesk.Revit.DB.Structure as DBStruct\r\n\r\nclr.AddReference('RevitServices')\r\nfrom RevitServices.Persistence import DocumentManager\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\nhost = UnwrapElement(IN[0])\r\n\r\nif not host:\r\n    OUT = \"Error: Select a concrete column in IN[0]\"\r\nelse:\r\n    rebar_collector = DB.FilteredElementCollector(doc) \\\r\n        .OfClass(DBStruct.Rebar) \\\r\n        .ToElements()\r\n\r\n    host_rebars = [r for r in rebar_collector if r.GetHostId() == host.Id]\r\n\r\n    if not host_rebars:\r\n        OUT = \"Error: No rebar found hosted in the selected column.\"\r\n    else:\r\n        bbs_data = []\r\n        total_steel_weight_kg = 0.0\r\n        \r\n        for idx, rebar in enumerate(host_rebars, start=1):\r\n            r_type = doc.GetElement(rebar.GetTypeId())\r\n            type_name = r_type.Name if r_type else \"Unknown\"\r\n\r\n            dia_ft = r_type.BarNominalDiameter if r_type else 0.0\r\n            dia_mm = dia_ft * 304.8\r\n\r\n            length_ft = rebar.TotalLength\r\n            length_mm = length_ft * 304.8\r\n            length_m = length_mm / 1000.0\r\n\r\n            qty = rebar.Quantity\r\n\r\n            unit_weight_kg_per_m = (dia_mm ** 2) / 162.0\r\n            total_bar_weight_kg = length_m * qty * unit_weight_kg_per_m\r\n            total_steel_weight_kg += total_bar_weight_kg\r\n\r\n            record = \"Rebar #{}: Type={}, Qty={}, Dia={:.1f}mm, Length={:.2f}m, Total Weight={:.2f}kg\".format(\r\n                idx,\r\n                type_name,\r\n                qty,\r\n                dia_mm,\r\n                length_m,\r\n                total_bar_weight_kg\r\n            )\r\n            bbs_data.append(record)\r\n\r\n        bbs_data.append(\"TOTAL STEEL WEIGHT FOR COLUMN: {:.2f} kg\".format(total_steel_weight_kg))\r\n\r\n        OUT = bbs_data\r\n        \r\n        ",
+      "Engine": "PythonNet3",
+      "VariableInputPorts": true,
+      "Id": "0859ce117a0e4362bc44ddc6d1255502",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "c1515d6ac4c3435d952f09e4b1849176",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "3a00762e3d604e2d93c1d1f58da26458",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded Python script."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 200.0,
+      "WatchHeight": 200.0,
+      "Id": "8295aa95ba11456abb58958dad95ea73",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "14da46894468424aa2c6d5bad12057d5",
+          "Name": "",
+          "Description": "Node to show output from",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "728c127655784fe597a3f4858889cf30",
+          "Name": "",
+          "Description": "Node output",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualizes a node's output"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "f2752315c835472c9e973f22fa397916",
+      "End": "c1515d6ac4c3435d952f09e4b1849176",
+      "Id": "ced6335ddb0d437283a9cc5ecfa9d7df",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "3a00762e3d604e2d93c1d1f58da26458",
+      "End": "14da46894468424aa2c6d5bad12057d5",
+      "Id": "6d1aff5156bb466bbbeb0b9327007865",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "EnableLegacyPolyCurveBehavior": false,
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Properties",
+      "Version": "4.0",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "10.3",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "None",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "4.0.2.3852",
+      "RunType": "Automatic",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "_Background Preview",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "9b95b0f5d1bb4fc9994a8af1cba3f652",
+        "Name": "Select Model Element",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 51.99999999999983,
+        "Y": 138.39999999999995
+      },
+      {
+        "Id": "0859ce117a0e4362bc44ddc6d1255502",
+        "Name": "Python Script",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 744.7999999999998,
+        "Y": 52.799999999999955
+      },
+      {
+        "Id": "8295aa95ba11456abb58958dad95ea73",
+        "Name": "Watch",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 793.6000000000003,
+        "Y": 321.6000000000001
+      }
+    ],
+    "Annotations": [],
+    "X": 0.0,
+    "Y": 0.0,
+    "Zoom": 1.0
+  }
+}

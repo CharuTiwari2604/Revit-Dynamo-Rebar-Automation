@@ -1,0 +1,198 @@
+{
+  "Uuid": "871ecc4c-4c92-4078-912b-f42de75d21ab",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "3rebarexercise",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "Dynamo.Nodes.DSModelElementSelection, DSRevitNodesUI",
+      "NodeType": "ExtensionNode",
+      "InstanceId": [
+        "f22753d7-9f09-489c-8d4a-5376f44beb12-001990b4"
+      ],
+      "Id": "fee57e082ed44924b5b32fee3bc391ff",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "7f420d9fd765430080a59fe3ba9bf5f4",
+          "Name": "Element",
+          "Description": "The selected elements.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Select a model element from the document."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "import clr\r\nfrom System.Collections.Generic import  List\r\n\r\nclr.AddReference('RevitAPI')\r\nimport Autodesk.Revit.DB as DB\r\nimport Autodesk.Revit.DB.Structure as DBStruct\r\n\r\nclr.AddReference('RevitServices')\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndoc=DocumentManager.Instance.CurrentDBDocument\r\n\r\nhost=UnwrapElement(IN[0])\r\n\r\nif not host:\r\n    OUT='Error: Please select a column'\r\nelse:\r\n    rebar_type=DB.FilteredElementCollector(doc) \\\r\n    .OfClass(DBStruct.RebarBarType) \\\r\n    .WhereElementIsElementType() \\\r\n    .FirstElement()\r\n    \r\n    if not rebar_type:\r\n        OUT='No Rebar Bar type found'\r\n    else:\r\n        bbox=host.get_BoundingBox(None)\r\n        ptmin=bbox.Min\r\n        ptmax=bbox.Max\r\n        \r\n        cover_ft=40.0/304.8\r\n        \r\n        xmin=ptmin.X+cover_ft\r\n        xmax=ptmax.X-cover_ft\r\n        ymin=ptmin.Y+cover_ft\r\n        ymax=ptmax.Y-cover_ft\r\n        zstart=ptmin.Z+cover_ft\r\n        zend=ptmax.Z-cover_ft\r\n        \r\n        corners=[(xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax)]\r\n        \r\n        created_rebar=[]\r\n        \r\n        TransactionManager.Instance.EnsureInTransaction(doc)\r\n        norm=DB.XYZ(1,0,0)\r\n        \r\n        for cx, cy in corners:\r\n            p1=DB.XYZ(cx, cy, zstart)\r\n            p2=DB.XYZ(cx, cy, zend)\r\n            \r\n            barline=DB.Line.CreateBound(p1, p2)\r\n            curves=List[DB.Curve]()\r\n            curves.Add(barline)\r\n            \r\n            bar_termination=DBStruct.BarTerminationsData(doc)\r\n            new_rebar=DBStruct.Rebar.CreateFromCurves(\r\n            doc,\r\n            DBStruct.RebarStyle.Standard,\r\n            rebar_type,\r\n            host,\r\n            norm,\r\n            curves,\r\n            bar_termination,\r\n            True,\r\n            True\r\n            )\r\n            created_rebar.append(new_rebar.Id.ToString())\r\n            \r\n        TransactionManager.Instance.TransactionTaskDone()\r\n        \r\n        OUT='Success: Created 4 longitudinal rebars'\r\n    \r\n    \r\n    \r\n    \r\n    \r\n    \r\n    \r\n    ",
+      "Engine": "PythonNet3",
+      "VariableInputPorts": true,
+      "Id": "c90eea17978b425d858fa15e5ce1e80d",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "e49a57bf3f0c46ccb321f4d0653dba3e",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "acd2ea99c17c4ec59a084bb9032428fb",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded Python script."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 304.8,
+      "WatchHeight": 40.0,
+      "Id": "21d95d4ad4494117be69b5dfbb1654b0",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "0e9b480b5a4a486998625991468df297",
+          "Name": "",
+          "Description": "Node to show output from",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "f39a1e01bdd74b30bd23e59c03124123",
+          "Name": "",
+          "Description": "Node output",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualizes a node's output"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "7f420d9fd765430080a59fe3ba9bf5f4",
+      "End": "e49a57bf3f0c46ccb321f4d0653dba3e",
+      "Id": "e9b418517d1c449db962a3c44390b5e8",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "acd2ea99c17c4ec59a084bb9032428fb",
+      "End": "0e9b480b5a4a486998625991468df297",
+      "Id": "4474ee2ef3464ac09d049f83e0c1baf6",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "EnableLegacyPolyCurveBehavior": null,
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Properties",
+      "Version": "4.0",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "10.3",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "None",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "4.0.2.3852",
+      "RunType": "Automatic",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "_Background Preview",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "fee57e082ed44924b5b32fee3bc391ff",
+        "Name": "Select Model Element",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 80.7999999999999,
+        "Y": 105.59999999999994
+      },
+      {
+        "Id": "c90eea17978b425d858fa15e5ce1e80d",
+        "Name": "Python Script",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 586.4,
+        "Y": 306.4
+      },
+      {
+        "Id": "21d95d4ad4494117be69b5dfbb1654b0",
+        "Name": "Watch",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 768.8000000000001,
+        "Y": 188.00000000000003
+      }
+    ],
+    "Annotations": [],
+    "X": 0.0,
+    "Y": 0.0,
+    "Zoom": 1.0
+  }
+}

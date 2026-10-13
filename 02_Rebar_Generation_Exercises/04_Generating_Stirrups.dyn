@@ -1,0 +1,198 @@
+{
+  "Uuid": "871ecc4c-4c92-4078-912b-f42de75d21ab",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "4rebarexercise",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 252.8,
+      "WatchHeight": 40.0,
+      "Id": "940efcfc965c4ef39988c0b39dc657d3",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "6aaca2826db24838912f23bbbff53d34",
+          "Name": "",
+          "Description": "Node to show output from",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "ae5c869fdfdf41f996f25a9ede05aa7d",
+          "Name": "",
+          "Description": "Node output",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualizes a node's output"
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "import clr\r\nfrom System.Collections.Generic import List\r\n\r\nclr.AddReference('RevitAPI')\r\nimport Autodesk.Revit.DB as DB\r\nimport Autodesk.Revit.DB.Structure as DBStruct\r\n\r\nclr.AddReference('RevitServices')\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndoc=DocumentManager.Instance.CurrentDBDocument\r\n\r\nhost=UnwrapElement(IN[0])\r\n\r\nif not host:\r\n    OUT='Please Select rebar'\r\nelse:\r\n    rebar_type=DB.FilteredElementCollector(doc) \\\r\n    .OfClass(DBStruct.RebarBarType) \\\r\n    .WhereElementIsElementType() \\\r\n    .FirstElement()\r\n    \r\n    bbox=host.get_BoundingBox(None)\r\n    ptmin=bbox.Min\r\n    ptmax=bbox.Max\r\n    cover_ft=40.0/304.8\r\n    \r\n    xmin=ptmax.X+cover_ft\r\n    xmax=ptmin.X-cover_ft\r\n    ymin=ptmax.Y+cover_ft\r\n    ymax=ptmin.Y-cover_ft\r\n    \r\n    zpos=ptmin.Z+cover_ft+(100.0/304.8)\r\n    \r\n    cp0=DB.XYZ(xmin, ymin, zpos)\r\n    cp1=DB.XYZ(xmax, ymin, zpos)\r\n    cp2=DB.XYZ(xmax, ymax, zpos)\r\n    cp3=DB.XYZ(xmin, ymax, zpos)\r\n    \r\n    l1=DB.Line.CreateBound(cp0, cp1)\r\n    l2=DB.Line.CreateBound(cp1, cp2)\r\n    l3=DB.Line.CreateBound(cp2, cp3)\r\n    l4=DB.Line.CreateBound(cp3, cp0)\r\n    \r\n    \r\n    curves=List[DB.Curve]()\r\n    curves.Add(l1)\r\n    curves.Add(l2)\r\n    curves.Add(l3)\r\n    curves.Add(l4)\r\n    \r\n    norm=DB.XYZ(0,0,1)\r\n    \r\n    bar_terminate=DBStruct.BarTerminationsData(doc)\r\n    TransactionManager.Instance.EnsureInTransaction(doc)\r\n    \r\n    stirrup_rebar=DBStruct.Rebar.CreateFromCurves(\r\n    doc,\r\n    DBStruct.RebarStyle.StirrupTie,\r\n    rebar_type,\r\n    host,\r\n    norm,\r\n    curves,\r\n    bar_terminate,\r\n    True,\r\n    True\r\n    )\r\n    \r\n    TransactionManager.Instance.TransactionTaskDone()\r\n    \r\n    OUT='Success: Created single stirrup'\r\n    \r\n    \r\n    \r\n  ",
+      "Engine": "PythonNet3",
+      "VariableInputPorts": true,
+      "Id": "fe745ea068c44f5697617db80aded61e",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "bbd009583392451eb18830ed95419ee9",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "682afbbf859440b9a871739becc9b7a4",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded Python script."
+    },
+    {
+      "ConcreteType": "Dynamo.Nodes.DSModelElementSelection, DSRevitNodesUI",
+      "NodeType": "ExtensionNode",
+      "InstanceId": [
+        "f22753d7-9f09-489c-8d4a-5376f44beb12-001990b4"
+      ],
+      "Id": "b84d5e10ff3f4c9fbddfc6c1d4efe4d6",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "8409fec434894fde8cc1316a8c4b3813",
+          "Name": "Element",
+          "Description": "The selected elements.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Select a model element from the document."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "682afbbf859440b9a871739becc9b7a4",
+      "End": "6aaca2826db24838912f23bbbff53d34",
+      "Id": "ed6fedb867ad4dc4b61785cb6b60f651",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "8409fec434894fde8cc1316a8c4b3813",
+      "End": "bbd009583392451eb18830ed95419ee9",
+      "Id": "bc9ddee36b3f42618b22cccc74c44b7a",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "EnableLegacyPolyCurveBehavior": null,
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Properties",
+      "Version": "4.0",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "10.3",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "None",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "4.0.2.3852",
+      "RunType": "Automatic",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "_Background Preview",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "940efcfc965c4ef39988c0b39dc657d3",
+        "Name": "Watch",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 847.9999999999999,
+        "Y": 126.39999999999998
+      },
+      {
+        "Id": "fe745ea068c44f5697617db80aded61e",
+        "Name": "Python Script",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 564.0000000000001,
+        "Y": 228.0
+      },
+      {
+        "Id": "b84d5e10ff3f4c9fbddfc6c1d4efe4d6",
+        "Name": "Select Model Element",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 20.799999999999898,
+        "Y": 239.99999999999994
+      }
+    ],
+    "Annotations": [],
+    "X": 0.0,
+    "Y": 0.0,
+    "Zoom": 1.0
+  }
+}
